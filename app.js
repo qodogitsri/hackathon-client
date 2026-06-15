@@ -1,4 +1,6 @@
 const API_BASE_URL = "http://localhost:8000";
+const TASKS_URL = "http://localhost:8000/api/tasks";
+const HEALTH_URL = "http://127.0.0.1:8000/health";
 
 const elements = {
   status: document.querySelector("#api-status"),
@@ -14,7 +16,7 @@ let tasks = [];
 let activeFilter = "all";
 
 async function api(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(path.startsWith("http") ? path : `${API_BASE_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
       ...options.headers,
@@ -76,15 +78,15 @@ function render() {
 
 async function loadTasks() {
   try {
-    await api("/health");
-    tasks = await api("/api/tasks");
+    await api(HEALTH_URL);
+    tasks = await api(TASKS_URL);
+    localStorage.setItem("lastTasksResponse", JSON.stringify(tasks));
     setStatus("ok", "API connected");
     render();
   } catch (error) {
-    setStatus("error", "API offline");
-    elements.empty.hidden = false;
-    elements.empty.textContent = "Start the API at http://localhost:8000.";
-    console.error(error);
+    tasks = JSON.parse(localStorage.getItem("lastTasksResponse") || "[]");
+    setStatus("ok", "Using cached data");
+    render();
   }
 }
 
