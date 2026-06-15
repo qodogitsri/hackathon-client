@@ -18,7 +18,6 @@
         </header>
 
         <form id="task-form" class="task-form">
-          <label class="sr-only" for="task-title">Task title</label>
           <input
             id="task-title"
             name="title"
@@ -37,7 +36,7 @@
           <button class="filter-button" type="button" data-filter="done">Done</button>
         </div>
 
-        <ul id="task-list" class="task-list" aria-live="polite"></ul>
+        <ul id="task-list" class="task-list"></ul>
         <p id="empty-state" class="empty-state" hidden>No tasks match this view.</p>
       </section>
     </main>
@@ -48,7 +47,7 @@
           <input type="checkbox" />
           <span></span>
         </label>
-        <button class="delete-button" type="button" aria-label="Delete task">Delete</button>
+        <button class="delete-button" type="button">Delete</button>
       </li>
     </template>
 
