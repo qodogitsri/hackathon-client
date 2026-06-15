@@ -23,6 +23,25 @@ let tasks = [];
 let activeFilter = "all";
 let summary = { total: 0, open: 0, completed: 0 };
 
+function computeSummaryFromTasks(taskList) {
+  const total = taskList.length;
+  const completed = taskList.filter((task) => task.completed).length;
+  const open = total - completed;
+  return { total, open, completed };
+}
+
+async function refreshSummary() {
+  try {
+    summary = await api(API_PATHS.summary);
+  } catch (error) {
+    // Summary endpoint is optional; fall back to a local computation.
+    console.warn("Summary endpoint unavailable; using client-side summary.", error);
+    summary = computeSummaryFromTasks(tasks);
+  }
+
+  renderSummary();
+}
+
 async function api(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
@@ -92,11 +111,18 @@ function render() {
 
 async function loadTasks() {
   try {
+    setStatus("pending", "Connecting...");
     await api(API_PATHS.health);
-    [tasks, summary] = await Promise.all([api(API_PATHS.tasks), api(API_PATHS.summary)]);
+
+    tasks = await api(API_PATHS.tasks);
+    // Render core UI even if summary endpoint fails.
+    summary = computeSummaryFromTasks(tasks);
     setStatus("ok", "API connected");
     renderSummary();
     render();
+
+    // Try to refresh the summary from the API without blocking task rendering.
+    await refreshSummary();
   } catch (error) {
     setStatus("error", "API offline");
     elements.empty.hidden = false;
@@ -114,15 +140,15 @@ async function createTask(event) {
   }
 
   try {
+    setStatus("pending", "Adding task...");
     const task = await api(API_PATHS.tasks, {
       method: "POST",
       body: JSON.stringify({ title }),
     });
     tasks = [...tasks, task];
-    summary = await api(API_PATHS.summary);
     elements.input.value = "";
+    await refreshSummary();
     setStatus("ok", "Task added");
-    renderSummary();
     render();
   } catch (error) {
     setStatus("error", "Add failed");
@@ -132,14 +158,14 @@ async function createTask(event) {
 
 async function toggleTask(task) {
   try {
+    setStatus("pending", "Updating task...");
     const updated = await api(API_PATHS.task(task.id), {
       method: "PATCH",
       body: JSON.stringify({ completed: !task.completed }),
     });
     tasks = tasks.map((candidate) => (candidate.id === task.id ? updated : candidate));
-    summary = await api(API_PATHS.summary);
+    await refreshSummary();
     setStatus("ok", updated.completed ? "Task done" : "Task reopened");
-    renderSummary();
     render();
   } catch (error) {
     setStatus("error", "Update failed");
@@ -149,11 +175,11 @@ async function toggleTask(task) {
 
 async function deleteTask(task) {
   try {
+    setStatus("pending", "Deleting task...");
     await api(API_PATHS.task(task.id), { method: "DELETE" });
     tasks = tasks.filter((candidate) => candidate.id !== task.id);
-    summary = await api(API_PATHS.summary);
+    await refreshSummary();
     setStatus("ok", "Task deleted");
-    renderSummary();
     render();
   } catch (error) {
     setStatus("error", "Delete failed");
