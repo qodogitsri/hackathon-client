@@ -131,6 +131,33 @@ h1 {
   background: var(--accent-dark);
 }
 
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 16px;
+}
+
+.summary div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.summary dt {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.summary dd {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
 .toolbar {
   display: flex;
   gap: 8px;
@@ -234,6 +261,7 @@ h1 {
 
   .header,
   .task-form,
+  .summary,
   .task-item {
     grid-template-columns: 1fr;
   }

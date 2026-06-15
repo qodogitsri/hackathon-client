@@ -1,4 +1,10 @@
 const API_BASE_URL = "http://localhost:8000";
+const API_PATHS = {
+  health: "/health",
+  tasks: "/api/tasks",
+  summary: "/api/tasks/summary",
+  task: (id) => `/api/tasks/${id}`,
+};
 
 const elements = {
   status: document.querySelector("#api-status"),
@@ -8,10 +14,14 @@ const elements = {
   empty: document.querySelector("#empty-state"),
   template: document.querySelector("#task-template"),
   filters: document.querySelectorAll(".filter-button"),
+  summaryTotal: document.querySelector("#summary-total"),
+  summaryOpen: document.querySelector("#summary-open"),
+  summaryCompleted: document.querySelector("#summary-completed"),
 };
 
 let tasks = [];
 let activeFilter = "all";
+let summary = { total: 0, open: 0, completed: 0 };
 
 async function api(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -37,6 +47,12 @@ async function api(path, options = {}) {
 function setStatus(kind, label) {
   elements.status.className = `status status-${kind}`;
   elements.status.textContent = label;
+}
+
+function renderSummary() {
+  elements.summaryTotal.textContent = summary.total;
+  elements.summaryOpen.textContent = summary.open;
+  elements.summaryCompleted.textContent = summary.completed;
 }
 
 function visibleTasks() {
@@ -76,9 +92,10 @@ function render() {
 
 async function loadTasks() {
   try {
-    await api("/health");
-    tasks = await api("/api/tasks");
+    await api(API_PATHS.health);
+    [tasks, summary] = await Promise.all([api(API_PATHS.tasks), api(API_PATHS.summary)]);
     setStatus("ok", "API connected");
+    renderSummary();
     render();
   } catch (error) {
     setStatus("error", "API offline");
@@ -97,13 +114,15 @@ async function createTask(event) {
   }
 
   try {
-    const task = await api("/api/tasks", {
+    const task = await api(API_PATHS.tasks, {
       method: "POST",
       body: JSON.stringify({ title }),
     });
     tasks = [...tasks, task];
+    summary = await api(API_PATHS.summary);
     elements.input.value = "";
     setStatus("ok", "Task added");
+    renderSummary();
     render();
   } catch (error) {
     setStatus("error", "Add failed");
@@ -113,12 +132,14 @@ async function createTask(event) {
 
 async function toggleTask(task) {
   try {
-    const updated = await api(`/api/tasks/${task.id}`, {
+    const updated = await api(API_PATHS.task(task.id), {
       method: "PATCH",
       body: JSON.stringify({ completed: !task.completed }),
     });
     tasks = tasks.map((candidate) => (candidate.id === task.id ? updated : candidate));
+    summary = await api(API_PATHS.summary);
     setStatus("ok", updated.completed ? "Task done" : "Task reopened");
+    renderSummary();
     render();
   } catch (error) {
     setStatus("error", "Update failed");
@@ -128,9 +149,11 @@ async function toggleTask(task) {
 
 async function deleteTask(task) {
   try {
-    await api(`/api/tasks/${task.id}`, { method: "DELETE" });
+    await api(API_PATHS.task(task.id), { method: "DELETE" });
     tasks = tasks.filter((candidate) => candidate.id !== task.id);
+    summary = await api(API_PATHS.summary);
     setStatus("ok", "Task deleted");
+    renderSummary();
     render();
   } catch (error) {
     setStatus("error", "Delete failed");
